@@ -34,7 +34,8 @@ public class GraphTools {
 		StringBuilder res = new StringBuilder();
 		for (int i = 0; i < matrix.length; i++) {
 			for (int j = 0; j < matrix[i].length; j++) {
-				res.append(matrix[i][j]);
+				int tmp = (matrix[i][j] == Integer.MAX_VALUE) ? 0 : matrix[i][j];
+				res.append(tmp + ";");
 			}
 			res.append("\n");
 		}

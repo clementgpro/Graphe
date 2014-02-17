@@ -1,6 +1,7 @@
 package implementation.weighted;
 
 import implementation.parcours.ParcoursProfondeurTools;
+import implementation.tools.GraphTools;
 import interfaces.IGraph;
 import interfaces.IUndirectedGraph;
 
@@ -122,7 +123,7 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 		vActuel[s] = 0;
 		for (int i = 0; i <= getNbNodes() - 2; i++) {
 			vPred = Arrays.copyOf(vActuel, vActuel.length);
-			for (int y = 0; y <= getNbNodes() - 1; y++) {
+			for (int y = 0; y < getNbNodes(); y++) {
 				for (int n : getNeighbors(y)) {
 					if (vPred[n] != Integer.MAX_VALUE) {
 						vActuel[y] = Math.min(vActuel[y], vPred[n] + getPoids(n, y));
@@ -144,13 +145,16 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 		List<Integer> noeudsTraverses = new ArrayList<Integer>();
 		noeudsTraverses.add(s);
 		int nombreNoeudsTraverse = 0;
-		int poids = 1;
+		int poids = 0;
 		while (nombreNoeudsTraverse < this.getNbNodes() - 1) {
-			noeudsTraverses.add(this.getSommetPoidsMinimal(noeudsTraverses));
+			int[] tabSommetPoidsMinimal = this.getSommetPoidsMinimal(noeudsTraverses);
+			int sommetDepartPoidsMinimal = tabSommetPoidsMinimal[0];
+			int sommetArriveePoidsMinimal = tabSommetPoidsMinimal[1];
+			noeudsTraverses.add(sommetArriveePoidsMinimal);
+			poids += this.getPoids(sommetDepartPoidsMinimal, sommetArriveePoidsMinimal);
 			nombreNoeudsTraverse++;
-			poids += this.getPoids(noeudsTraverses.get(nombreNoeudsTraverse), this.getSommetPoidsMinimal(noeudsTraverses));
+
 		}
-		System.out.println(noeudsTraverses);
 		return poids;
 	}
 
@@ -161,20 +165,22 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 	 *            les sommets deja parcourus (interdit d'y repasser)
 	 * @return
 	 */
-	private int getSommetPoidsMinimal(List<Integer> sommets) {
+	private int[] getSommetPoidsMinimal(List<Integer> sommets) {
 		int poidsMinimal = Integer.MAX_VALUE;
-		int sommetPoidsMinimal = -1;
+		int sommetArriveePoidsMinimal = -1;
 		int compteurSommet = 0;
-		while (compteurSommet < sommets.size() || sommetPoidsMinimal == -1) {
+		int sommetDepartPoidsMinimal = 0;
+		while (compteurSommet < sommets.size() || sommetArriveePoidsMinimal == -1) {
 			int sommetPoidsMinimalCourant = this.getSommetPoidsMinimal(sommets.get(compteurSommet), sommets);
 			int poidsMinimalCourant = this.getPoids(sommets.get(compteurSommet), sommetPoidsMinimalCourant);
 			if (poidsMinimalCourant < poidsMinimal) {
 				poidsMinimal = poidsMinimalCourant;
-				sommetPoidsMinimal = sommetPoidsMinimalCourant;
+				sommetArriveePoidsMinimal = sommetPoidsMinimalCourant;
+				sommetDepartPoidsMinimal = compteurSommet;
 			}
 			compteurSommet++;
 		}
-		return sommetPoidsMinimal;
+		return new int[] { sommetDepartPoidsMinimal, sommetArriveePoidsMinimal };
 	}
 
 	/**
@@ -211,20 +217,26 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 	}
 
 	public static void main(String[] args) {
-		int[][] matrix = new int[][] { { Integer.MAX_VALUE, 5, 10 }, { 5, Integer.MAX_VALUE, 2 }, { 10, 2, Integer.MAX_VALUE } };
-		// int[][] matrix = new int[][] { { 0, 1, 6, 3 }, { 1, 0, 2, 7 }, { 6, 2, 0, 5 }, { 3, 7, 5, 0 } };
-		// int[][] matrix = new int[][] { { Integer.MAX_VALUE, 2, 8, Integer.MAX_VALUE }, { 2, Integer.MAX_VALUE, 4, Integer.MAX_VALUE },
-		// 		{ 8, 4, Integer.MAX_VALUE, 1 }, { Integer.MAX_VALUE, Integer.MAX_VALUE, 1, Integer.MAX_VALUE } };
-		WeightedAdjavencyMatrixUndirectedGraph weightedGraph = new WeightedAdjavencyMatrixUndirectedGraph(matrix);
-		// List<Integer> sommets = new ArrayList<Integer>();
-		// sommets.add(1);
-		// System.out.println(weightedGraph.getSommetPoidsMinimal(1));
-		weightedGraph.prim(0);
+		int[][] matrixPrim = new int[][] { { Integer.MAX_VALUE, 5, 10 }, { 5, Integer.MAX_VALUE, 2 }, { 10, 2, Integer.MAX_VALUE } };
+		int[][] matrixPrim2 = new int[][] { { Integer.MAX_VALUE, 1, 6, 3 }, { 1, Integer.MAX_VALUE, 2, 7 }, { 6, 2, Integer.MAX_VALUE, 5 },
+				{ 3, 7, 5, Integer.MAX_VALUE } };
+		WeightedAdjavencyMatrixUndirectedGraph wgPrim = new WeightedAdjavencyMatrixUndirectedGraph(matrixPrim);
+		WeightedAdjavencyMatrixUndirectedGraph wgPrimBis = new WeightedAdjavencyMatrixUndirectedGraph(matrixPrim2);
+		System.out.println(GraphTools.printMatrix(matrixPrim) + "Prim 1 : " + wgPrim.prim(0));
+		System.out.println("------------------");
+		System.out.println(GraphTools.printMatrix(matrixPrim2) + "Prim 2 (tricky) : " + wgPrimBis.prim(0));
 
-//		int[] res = weightedGraph.bellman(0);
-//		for (int i = 0; i < res.length; i++) {
-//			System.out.print(res[i] + ";");
-//		}
+		// int[][] matrix = new int[][] { { 0, 1, 6, 3 }, { 1, 0, 2, 7 }, { 6, 2, 0, 5 }, { 3, 7, 5, 0 } };
+		int[][] matrixBellman = new int[][] { { Integer.MAX_VALUE, 2, 8, Integer.MAX_VALUE }, { 2, Integer.MAX_VALUE, 4, Integer.MAX_VALUE },
+				{ 8, 4, Integer.MAX_VALUE, 1 }, { Integer.MAX_VALUE, Integer.MAX_VALUE, 1, Integer.MAX_VALUE } };
+		WeightedAdjavencyMatrixUndirectedGraph wgBellman = new WeightedAdjavencyMatrixUndirectedGraph(matrixBellman);
+
+		System.out.println("------------------");
+		int[] res = wgBellman.bellman(0);
+		System.out.println(GraphTools.printMatrix(matrixBellman) + "Bellman : " );
+		for (int i = 0; i < res.length; i++) {
+			System.out.print(res[i] + ";");
+		}
 
 	}
 
