@@ -1,7 +1,9 @@
 package implementation.weighted;
 
+import implementation.adjacency.matrix.AdjacencyMatrixDirectedGraph;
 import implementation.parcours.ParcoursProfondeurTools;
 import implementation.tools.GraphTools;
+import interfaces.IDirectedGraph;
 import interfaces.IUndirectedGraph;
 
 import java.util.ArrayList;
@@ -14,34 +16,34 @@ import java.util.List;
  * @author Clément
  * 
  */
-public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph {
+public class WeightedAdjavencyMatrixDirectedGraph implements IDirectedGraph {
 
 	/** Matrice d'adjacence. */
 	int[][] adjacencyMatrix;
 
 	/** Nombre d'arcs. */
-	int nbEdges;
+	int nbArcs;
 
 	/** Nombre de noeuds. */
 	int nbNodes;
 
-	public WeightedAdjavencyMatrixUndirectedGraph(int[][] matrix) {
+	public WeightedAdjavencyMatrixDirectedGraph(int[][] matrix) {
 		this.adjacencyMatrix = matrix;
 		this.nbNodes = matrix.length;
 
-		int nbEdges = 0;
+		int nbArcs = 0;
 		for (int[] aMatrix : matrix) {
 			for (int linked : aMatrix) {
 				if (linked != Integer.MAX_VALUE) {
-					nbEdges++;
+					nbArcs++;
 				}
 			}
 		}
-		this.nbEdges = nbEdges / 2;
+		this.nbArcs = nbArcs;
 	}
 
-	public WeightedAdjavencyMatrixUndirectedGraph(IUndirectedGraph graph) {
-		this.nbEdges = graph.getNbEdges();
+	public WeightedAdjavencyMatrixDirectedGraph(IUndirectedGraph graph) {
+		this.nbArcs = graph.getNbEdges();
 		this.nbNodes = graph.getNbNodes();
 		this.adjacencyMatrix = graph.toAdjacencyMatrix();
 	}
@@ -57,34 +59,37 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 	}
 
 	@Override
-	public int getNbEdges() {
-		return this.nbEdges;
+	public boolean isArc(int from, int to) {
+		return this.adjacencyMatrix[from][to] != Integer.MAX_VALUE;
 	}
 
 	@Override
-	public boolean isEdge(int x, int y) {
-		return this.adjacencyMatrix[x][y] != Integer.MAX_VALUE && this.adjacencyMatrix[y][x] != Integer.MAX_VALUE;
-	}
-
-	@Override
-	public void removeEdge(int x, int y) {
-		if (this.isEdge(x, y)) {
-			this.adjacencyMatrix[x][y] = Integer.MAX_VALUE;
-			this.adjacencyMatrix[y][x] = Integer.MAX_VALUE;
-			this.nbEdges--;
-		}
-	}
-
-	public void addEdge(int x, int y, int weight) {
-		if (!this.isEdge(x, y) && x != y) {
-			this.adjacencyMatrix[x][y] = weight;
-			this.adjacencyMatrix[y][x] = weight;
-			this.nbEdges++;
+	public void removeArc(int from, int to) {
+		if (this.isArc(from, to)) {
+			this.adjacencyMatrix[from][to] = Integer.MAX_VALUE;
+			this.nbArcs--;
 		}
 	}
 
 	@Override
-	public int[] getNeighbors(int x) {
+	public void addArc(int from, int to) {
+		this.addArc(from, to, 1);
+	}
+	
+	public void addArc(int from, int to, int weight) {
+		if (!this.isArc(from, to) && from != to) {
+			this.adjacencyMatrix[from][to] = weight;
+			this.nbArcs++;
+		}
+	}
+		
+	@Override
+	public int getNbArcs() {
+		return this.nbArcs;
+	}
+	
+	@Override
+	public int[] getSuccessors(int x) {
 		int cpt = 0;
 		int[] neighbors = new int[0];
 		for (int s = 0; s < this.adjacencyMatrix[x].length; s++) {
@@ -93,18 +98,44 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 				neighbors[cpt++] = s;
 			}
 		}
-
 		return neighbors;
 	}
 
 	@Override
-	public List<List<Integer>> getComposanteConnexe() {
-		return ParcoursProfondeurTools.parcoursProfondeur(this);
+	public int[] getPredecessors(int x) {
+		List<Integer> predecessorsList = new ArrayList<Integer>();
+        for (int i = 0; i < this.adjacencyMatrix.length; i++) {
+            if (this.adjacencyMatrix[i][x] != Integer.MAX_VALUE) {
+                predecessorsList.add(i);
+            }
+        }
+
+        int[] predecessors = new int[predecessorsList.size()];
+        for (int i = 0; i < predecessorsList.size(); i++) {
+            predecessors[i] = predecessorsList.get(i);
+        }
+
+        return predecessors;
 	}
 
 	@Override
-	public void addEdge(int x, int y) {
-		this.addEdge(x, y, 1);
+	public IDirectedGraph computeInverse() {
+		int[][] matrix = new int[this.nbNodes][this.nbNodes];
+        for (int x = 0; x < matrix.length; x++) {
+            for (int y = 0; y < matrix[x].length; y++) {
+                if (x == y) {
+                    matrix[x][y] = Integer.MAX_VALUE;
+                } else if (this.adjacencyMatrix[x][y] != Integer.MAX_VALUE) {
+                    matrix[y][x] = this.adjacencyMatrix[x][y];
+                }
+            }
+        }
+        return new AdjacencyMatrixDirectedGraph(matrix);
+	}
+
+	@Override
+	public List<List<Integer>> getComposanteFortementConnexe() {
+		return ParcoursProfondeurTools.parcoursProfondeur(this);
 	}
 
 	/**
@@ -117,13 +148,13 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 		int[] vPred = new int[getNbNodes()];
 		int[] vActuel = new int[getNbNodes()];
 		for (int y = 0; y < getNbNodes(); y++) {
-			vActuel[y] = (this.isEdge(s, y)) ? this.getPoids(s, y) : Integer.MAX_VALUE;
+			vActuel[y] = (this.isArc(s, y)) ? this.getPoids(s, y) : Integer.MAX_VALUE;
 		}
 		vActuel[s] = 0;
 		for (int i = 0; i <= getNbNodes() - 2; i++) {
 			vPred = Arrays.copyOf(vActuel, vActuel.length);
 			for (int y = 0; y < getNbNodes(); y++) {
-				for (int n : getNeighbors(y)) {
+				for (int n : getSuccessors(y)) {
 					if (vPred[n] != Integer.MAX_VALUE) {
 						vActuel[y] = Math.min(vActuel[y], vPred[n] + getPoids(n, y));
 					}
@@ -190,7 +221,7 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 	 * @return
 	 */
 	private int getSommetPoidsMinimal(int s, List<Integer> sommetsExclure) {
-		int[] neighbors = this.getNeighbors(s);
+		int[] neighbors = this.getSuccessors(s);
 		int poidsMinimal = Integer.MAX_VALUE;
 		int sommetPoidsMinimal = -1;
 		int compteurVoisin = 0;
@@ -219,8 +250,8 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 		int[][] matrixPrim = new int[][] { { Integer.MAX_VALUE, 5, 10 }, { 5, Integer.MAX_VALUE, 2 }, { 10, 2, Integer.MAX_VALUE } };
 		int[][] matrixPrim2 = new int[][] { { Integer.MAX_VALUE, 1, 6, 3 }, { 1, Integer.MAX_VALUE, 2, 7 }, { 6, 2, Integer.MAX_VALUE, 5 },
 				{ 3, 7, 5, Integer.MAX_VALUE } };
-		WeightedAdjavencyMatrixUndirectedGraph wgPrim = new WeightedAdjavencyMatrixUndirectedGraph(matrixPrim);
-		WeightedAdjavencyMatrixUndirectedGraph wgPrimBis = new WeightedAdjavencyMatrixUndirectedGraph(matrixPrim2);
+		WeightedAdjavencyMatrixDirectedGraph wgPrim = new WeightedAdjavencyMatrixDirectedGraph(matrixPrim);
+		WeightedAdjavencyMatrixDirectedGraph wgPrimBis = new WeightedAdjavencyMatrixDirectedGraph(matrixPrim2);
 		System.out.println(GraphTools.printMatrix(matrixPrim) + "Prim 1 : " + wgPrim.prim(0));
 		System.out.println("------------------");
 		System.out.println(GraphTools.printMatrix(matrixPrim2) + "Prim 2 (tricky) : " + wgPrimBis.prim(0));
@@ -228,7 +259,7 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 		// int[][] matrix = new int[][] { { 0, 1, 6, 3 }, { 1, 0, 2, 7 }, { 6, 2, 0, 5 }, { 3, 7, 5, 0 } };
 		int[][] matrixBellman = new int[][] { { Integer.MAX_VALUE, 2, 8, Integer.MAX_VALUE }, { 2, Integer.MAX_VALUE, 4, Integer.MAX_VALUE },
 				{ 8, 4, Integer.MAX_VALUE, 1 }, { Integer.MAX_VALUE, Integer.MAX_VALUE, 1, Integer.MAX_VALUE } };
-		WeightedAdjavencyMatrixUndirectedGraph wgBellman = new WeightedAdjavencyMatrixUndirectedGraph(matrixBellman);
+		WeightedAdjavencyMatrixDirectedGraph wgBellman = new WeightedAdjavencyMatrixDirectedGraph(matrixBellman);
 
 		System.out.println("------------------");
 		int[] res = wgBellman.bellman(0);
@@ -238,5 +269,4 @@ public class WeightedAdjavencyMatrixUndirectedGraph implements IUndirectedGraph 
 		}
 
 	}
-
 }

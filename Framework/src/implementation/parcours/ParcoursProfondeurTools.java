@@ -30,6 +30,7 @@ public class ParcoursProfondeurTools {
 			}
 		}
 
+		// Composantes fortement connexe dans le cas d'un graph dirige
 		if (graph instanceof IDirectedGraph) {
 			IDirectedGraph directedGraph = ((IDirectedGraph) graph);
 			composantes.clear();
